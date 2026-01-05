@@ -25,23 +25,25 @@ class _DateTimePageState extends State<DateTimePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 🟢 Ambil data hall dari HallDetailsPage
-    final hallArgs = ModalRoute.of(context)!.settings.arguments as Map;
+    final hallArgs =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
 
     final hallName = hallArgs["hallName"];
     final imagePath = hallArgs["imagePath"];
     final pricePerHour = hallArgs["pricePerHour"];
 
     int calculatePrice() {
-       if (startTime == null || endTime == null) return 0;
+  if (startTime == null || endTime == null) return 0;
   return (calculateHours() * pricePerHour).toInt();
-    }
+}
+
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7EDE9),
+
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7EDE9),
-        elevation: 0,
+        backgroundColor: Colors.black,
+        foregroundColor: const Color(0xFFD4AF37),
         centerTitle: true,
         title: const Text(
           "Select Date & Time",
@@ -54,77 +56,135 @@ class _DateTimePageState extends State<DateTimePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // ================= DATE =================
             const Text("Pick Date", style: TextStyle(fontSize: 16)),
             const SizedBox(height: 10),
 
-            ElevatedButton(
-              onPressed: () async {
-                final d = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime(2030),
-                );
-                setState(() => selectedDate = d);
-              },
-              child: Text(
-                selectedDate == null
-                    ? "Choose Date"
-                    : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: const Color(0xFFD4AF37),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2030),
+                  );
+                  setState(() => selectedDate = d);
+                },
+                child: Text(
+                  selectedDate == null
+                      ? "Choose Date"
+                      : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                ),
               ),
             ),
 
             const SizedBox(height: 30),
 
+            // ================= START TIME =================
             const Text("Start Time", style: TextStyle(fontSize: 16)),
             const SizedBox(height: 10),
 
-            ElevatedButton(
-              onPressed: () async {
-                final t = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                setState(() => startTime = t);
-              },
-              child: Text(
-                startTime == null ? "Choose Start Time" : startTime!.format(context),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: const Color(0xFFD4AF37),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: () async {
+                  final t = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  setState(() => startTime = t);
+                },
+                child: Text(
+                  startTime == null
+                      ? "Choose Start Time"
+                      : startTime!.format(context),
+                ),
               ),
             ),
 
             const SizedBox(height: 30),
 
+            // ================= END TIME =================
             const Text("End Time", style: TextStyle(fontSize: 16)),
             const SizedBox(height: 10),
 
-            ElevatedButton(
-              onPressed: () async {
-                final t = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                setState(() => endTime = t);
-              },
-              child: Text(
-                endTime == null ? "Choose End Time" : endTime!.format(context),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: const Color(0xFFD4AF37),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: () async {
+                  final t = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  setState(() => endTime = t);
+                },
+                child: Text(
+                  endTime == null
+                      ? "Choose End Time"
+                      : endTime!.format(context),
+                ),
               ),
             ),
 
             const SizedBox(height: 40),
 
-            Text("Total Hours: ${calculateHours()}"),
-            Text("Total Price: RM ${calculatePrice()}"),
+            // ================= SUMMARY =================
+            Text(
+              "Total Hours: ${calculateHours()}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Total Price: RM ${calculatePrice()}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
 
             const Spacer(),
 
+            // ================= CONTINUE =================
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: const Color(0xFFD4AF37),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
                 onPressed: () {
-                  if (selectedDate == null || startTime == null || endTime == null) {
+                  if (selectedDate == null ||
+                      startTime == null ||
+                      endTime == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please complete all fields")),
+                      const SnackBar(
+                        content: Text("Please complete all fields"),
+                      ),
                     );
                     return;
                   }
@@ -148,12 +208,9 @@ class _DateTimePageState extends State<DateTimePage> {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[400],
-                ),
                 child: const Text(
                   "Continue",
-                  style: TextStyle(color: Colors.black),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

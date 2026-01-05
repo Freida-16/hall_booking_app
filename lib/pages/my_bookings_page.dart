@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/fake_database.dart';
-import 'update_booking_page.dart';
+import '../data/booking_service.dart';
 import 'payment_page.dart';
 
 class MyBookingsPage extends StatefulWidget {
@@ -11,208 +10,181 @@ class MyBookingsPage extends StatefulWidget {
 }
 
 class _MyBookingsPageState extends State<MyBookingsPage> {
+  late Future<List<Map<String, dynamic>>> _bookingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+  void _loadBookings() {
+    _bookingsFuture = BookingService.getBookings();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7EDE9),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7EDE9),
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          "My Bookings",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text("My Bookings"),
+        backgroundColor: Colors.black,
+        foregroundColor: const Color(0xFFD4AF37),
       ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _bookingsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      body: bookingsDB.isEmpty
-          ? const Center(
-              child: Text(
-                "No bookings yet...",
-                style: TextStyle(fontSize: 18, color: Colors.black54),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: bookingsDB.length,
-              itemBuilder: (context, index) {
-                final b = bookingsDB[index];
-                final isPaid = b["status"] == "Paid";
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No bookings yet"));
+          }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
+          final bookings = snapshot.data!;
 
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // HALL NAME
-                      Text(
-                        b["hall"],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-
-                      Text("Date: ${b["date"]}"),
-                      Text("Hours: ${b["hours"]}"),
-                      Text(
-                        "Add-ons: ${b["addOns"].isEmpty ? "None" : b["addOns"].join(", ")}",
-                      ),
-                      Text(
-                        "Total Price: RM ${b["total"]}",
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-
-                      const SizedBox(height: 10),
-                      _badge(b["status"]),
-                      const SizedBox(height: 14),
-
-                      // ==========================
-                      // ACTION BUTTONS (FIXED)
-                      // ==========================
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          // PAY NOW
-                          if (!isPaid)
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[400],
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 12,
-                                ),
-                              ),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        PaymentPage(bookingIndex: index),
-                                  ),
-                                ).then((_) => setState(() {}));
-                              },
-                              child: const Text("Pay Now"),
-                            ),
-
-                          // EDIT
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[400],
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 12,
-                              ),
-                            ),
-                            onPressed: isPaid
-                                ? null
-                                : () async {
-                                    final cleanData =
-                                        _sanitizeBooking(b);
-
-                                    final updated =
-                                        await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => UpdateBookingPage(
-                                          bookingData: cleanData,
-                                          bookingIndex: index,
-                                        ),
-                                      ),
-                                    );
-
-                                    if (updated != null) {
-                                      setState(() {});
-                                    }
-                                  },
-                            child: const Text("Edit"),
-                          ),
-
-                          // CANCEL
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[400],
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 12,
-                              ),
-                            ),
-                            onPressed: isPaid
-                                ? null
-                                : () {
-                                    setState(() =>
-                                        bookingsDB.removeAt(index));
-                                  },
-                            child: const Text("Cancel"),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: bookings.length,
+            itemBuilder: (context, index) {
+              return _bookingCard(bookings[index]);
+            },
+          );
+        },
+      ),
     );
   }
 
-  // =================
-  // DATA SANITIZER
-  // =================
-  Map<String, dynamic> _sanitizeBooking(Map<String, dynamic> b) {
-    String date = b["date"].toString().trim();
-
-    int hours = b["hours"] is int
-        ? b["hours"]
-        : int.tryParse(b["hours"].toString()) ?? 1;
-
-    List addOns = b["addOns"] is List ? b["addOns"] : [];
-
-    return {
-      "hall": b["hall"],
-      "date": date,
-      "hours": hours,
-      "addOns": addOns,
-      "total": b["total"],
-      "status": b["status"],
-    };
-  }
-
-  // =================
-  // STATUS BADGE
-  // =================
-  Widget _badge(String status) {
-    Color c = status == "Pending"
-        ? Colors.orange
-        : status == "Approved"
-            ? Colors.green
-            : status == "Paid"
-                ? Colors.blue
-                : Colors.grey;
+  Widget _bookingCard(Map<String, dynamic> b) {
+    final bool isPaid = b["status"] == "Paid";
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration:
-          BoxDecoration(color: c, borderRadius: BorderRadius.circular(20)),
-      child:
-          Text(status, style: const TextStyle(color: Colors.white)),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E7DC),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                b["hall"],
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              _statusBadge(b["status"]),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          Text("Date: ${b["date"]}"),
+          Text("Hours: ${b["hours"]}"),
+          Text(
+            "Total: RM ${b["total"]}",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              if (!isPaid)
+                ElevatedButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            PaymentPage(bookingId: b["id"]),
+                      ),
+                    );
+                    setState(_loadBookings);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: const Color(0xFFD4AF37),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text("Pay Now"),
+                ),
+
+              if (!isPaid) const SizedBox(width: 10),
+
+              ElevatedButton(
+                onPressed: isPaid
+                    ? null // 🔥 DISABLE BILA PAID
+                    : () async {
+                        await Navigator.pushNamed(
+                          context,
+                          '/editBooking',
+                          arguments: {
+                            "id": b["id"],
+                            "date": b["date"],
+                            "hours": b["hours"],
+                          },
+                        );
+                        setState(_loadBookings);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isPaid ? Colors.grey.shade300 : Colors.white,
+                  foregroundColor:
+                      isPaid ? Colors.grey : const Color(0xFFD4AF37),
+                  elevation: 0,
+                  side: const BorderSide(color: Color(0xFFD4AF37)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(isPaid ? "Paid" : "Edit"),
+              ),
+
+              const Spacer(),
+
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  await BookingService.deleteBooking(b["id"]);
+                  setState(_loadBookings);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    final bool isPaid = status == "Paid";
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPaid ? Colors.black : const Color(0xFFD4AF37),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: isPaid ? const Color(0xFFD4AF37) : Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

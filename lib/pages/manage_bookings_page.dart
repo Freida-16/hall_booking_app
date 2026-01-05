@@ -1,118 +1,148 @@
 import 'package:flutter/material.dart';
-import '../data/fake_database.dart';
+import '../services/booking_service.dart';
 
-class ManageBookingsPage extends StatefulWidget {
-  const ManageBookingsPage({super.key});
+class MyBookingsPage extends StatefulWidget {
+  const MyBookingsPage({super.key});
 
   @override
-  State<ManageBookingsPage> createState() => _ManageBookingsPageState();
+  State<MyBookingsPage> createState() => _MyBookingsPageState();
 }
 
-class _ManageBookingsPageState extends State<ManageBookingsPage> {
+class _MyBookingsPageState extends State<MyBookingsPage> {
+  late Future<List<Map<String, dynamic>>> bookingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    bookingsFuture = BookingService.getBookings();
+  }
+
+  void _refresh() {
+    setState(() {
+      bookingsFuture = BookingService.getBookings();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7EDE9),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7EDE9),
-        elevation: 0,
-        centerTitle: true,
-        title: const Text("Manage Bookings",
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("My Bookings"),
+        backgroundColor: Colors.black,
+        foregroundColor: const Color(0xFFD4AF37),
       ),
-      body: bookingsDB.isEmpty
-          ? const Center(child: Text("No bookings yet...", style: TextStyle(fontSize: 18)))
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: bookingsDB.length,
-              itemBuilder: (context, index) {
-                final b = bookingsDB[index];
+      body: FutureBuilder(
+        future: bookingsFuture,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(b["hall"],
-                          style:
-                              const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                      Text("Date: ${b["date"]}"),
-                      Text("Hours: ${b["hours"]}"),
-                      Text("Add-ons: ${b["addOns"].join(", ")}"),
-                      Text("Total: RM ${b["total"]}"),
-                      const SizedBox(height: 10),
-                      _badge(b["status"]),
-                      const SizedBox(height: 20),
+          final bookings = snapshot.data!;
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // APPROVE
-                          if (b["status"] == "Pending")
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  b["status"] = "Approved";
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[300],
-                              ),
-                              child: const Text("Approve"),
-                            ),
+          if (bookings.isEmpty) {
+            return const Center(child: Text("No bookings yet"));
+          }
 
-                          // REJECT
-                          if (b["status"] == "Pending")
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  b["status"] = "Rejected";
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange[300],
-                              ),
-                              child: const Text("Reject"),
-                            ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: bookings.length,
+            itemBuilder: (context, index) {
+              final b = bookings[index];
 
-                          // DELETE (always shown)
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() => deleteBooking(index));
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[300],
-                            ),
-                            child: const Text("Delete",
-                                style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      )
-                    ],
-                  ),
-                );
-              },
-            ),
+              return _bookingCard(
+                hall: b["hall"],
+                date: b["date"],
+                hours: b["hours"],
+                total: b["total"],
+                status: b["status"],
+                id: b["id"],
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
-  Widget _badge(String status) {
-    Color c = status == "Pending"
-        ? Colors.orange
-        : status == "Approved"
-            ? Colors.green
-            : Colors.red;
+  Widget _bookingCard({
+    required int id,
+    required String hall,
+    required String date,
+    required int hours,
+    required int total,
+    required String status,
+  }) {
+    final isPaid = status == "Paid";
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E7DC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(hall, style: const TextStyle(fontWeight: FontWeight.bold)),
+              _statusBadge(status),
+            ],
+          ),
+          Text("Date: $date"),
+          Text("Hours: $hours"),
+          Text("Total: RM $total",
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              if (status == "Approved")
+                ElevatedButton(
+                  onPressed: () async {
+                    await BookingService.updateStatus(id, "Paid");
+                    _refresh();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: const Color(0xFFD4AF37),
+                  ),
+                  child: const Text("Pay Now"),
+                ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  await BookingService.deleteBooking(id);
+                  _refresh();
+                },
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    Color bg = status == "Paid"
+        ? Colors.black
+        : status == "Approved"
+            ? Colors.green
+            : const Color(0xFFD4AF37);
+
+    Color fg = status == "Paid" ? const Color(0xFFD4AF37) : Colors.black;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration:
-          BoxDecoration(color: c, borderRadius: BorderRadius.circular(6)),
-      child: Text(status, style: const TextStyle(color: Colors.white)),
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(30)),
+      child: Text(status,
+          style: TextStyle(color: fg, fontWeight: FontWeight.bold)),
     );
   }
 }

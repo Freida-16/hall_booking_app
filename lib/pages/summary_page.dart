@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import '../data/fake_database.dart';
+import '../data/booking_service.dart';
+import 'home_guest_page.dart';
 
 class SummaryPage extends StatelessWidget {
   const SummaryPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments as Map;
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
 
-    final hallName = args["hallName"];
-    final imagePath = args["imagePath"];
+    final String hallName = args["hallName"];
     final DateTime date = args["date"];
     final int hours = args["hours"];
     final List addOns = args["addOns"];
@@ -18,37 +19,48 @@ class SummaryPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF7EDE9),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7EDE9),
-        elevation: 0,
+        backgroundColor: Colors.black,
+        foregroundColor: const Color(0xFFD4AF37),
         centerTitle: true,
-        title: const Text("Summary", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Summary"),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Hall: $hallName"),
-            Text("Date: ${date.day}/${date.month}/${date.year}"),
-            Text("Hours: $hours"),
-
+            _info("Hall", hallName),
+            _info("Date", "${date.day}/${date.month}/${date.year}"),
+            _info("Hours", hours.toString()),
+            _info("Add-ons", addOns.isEmpty ? "None" : addOns.join(", ")),
+            const SizedBox(height: 10),
             Text(
-              "Add-ons: ${addOns.isEmpty ? "None" : addOns.join(", ")}",
-              style: const TextStyle(fontSize: 16),
+              "Total: RM $total",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-
-            Text("Total: RM $total",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
 
             const Spacer(),
 
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  bookingsDB.add({
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: const Color(0xFFD4AF37),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: const Text(
+                  "Confirm Booking",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                onPressed: () async {
+                  await BookingService.addBooking({
                     "hall": hallName,
                     "date": "${date.day}/${date.month}/${date.year}",
                     "hours": hours,
@@ -57,20 +69,35 @@ class SummaryPage extends StatelessWidget {
                     "status": "Pending",
                   });
 
-                  Navigator.popUntil(context, (route) => route.isFirst);
+                  if (!context.mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("✅ Booking saved successfully"),
+                    ),
+                  );
+
+                  // 🔥 BALIK KE HOME (TAB HOME)
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const HomeGuestPage(startIndex: 0),
+                    ),
+                    (route) => false,
+                  );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[400],
-                ),
-                child: const Text(
-                  "Confirm Booking",
-                  style: TextStyle(color: Colors.black),
-                ),
               ),
-            )
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _info(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text("$label: $value"),
     );
   }
 }

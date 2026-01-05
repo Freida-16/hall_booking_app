@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../data/fake_database.dart';
+import '../data/booking_service.dart';
 
 class AdminManageBookingsPage extends StatefulWidget {
   const AdminManageBookingsPage({super.key});
@@ -11,173 +11,189 @@ class AdminManageBookingsPage extends StatefulWidget {
 
 class _AdminManageBookingsPageState
     extends State<AdminManageBookingsPage> {
+  late Future<List<Map<String, dynamic>>> _bookingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+  void _loadBookings() {
+    _bookingsFuture = BookingService.getBookings();
+  }
+
+  Future<bool> _confirmDialog(String title, String message) async {
+    return await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Confirm"),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7EDE9),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7EDE9),
-        elevation: 0,
+        title: const Text("Manage Bookings"),
+        backgroundColor: Colors.black,
+        foregroundColor: const Color(0xFFD4AF37),
         centerTitle: true,
-        title: const Text(
-          "Manage Bookings",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
       ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _bookingsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      body: bookingsDB.isEmpty
-          ? const Center(
-              child: Text(
-                "No bookings available.",
-                style: TextStyle(fontSize: 18),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: bookingsDB.length,
-              itemBuilder: (context, index) {
-                final b = bookingsDB[index];
-                final bool isPaid = b["status"] == "Paid";
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No bookings found"));
+          }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+          final bookings = snapshot.data!;
 
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        b["hall"],
-                        style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      Text("Date: ${b["date"]}"),
-                      Text("Hours: ${b["hours"]}"),
-                      Text(
-                        "Add-ons: ${b["addOns"].isEmpty ? "None" : b["addOns"].join(", ")}",
-                      ),
-                      Text("Total: RM ${b["total"]}"),
-
-                      const SizedBox(height: 10),
-                      _statusBadge(b["status"]),
-
-                      if (isPaid)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Text(
-                            "Payment completed. No further action allowed.",
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54),
-                          ),
-                        ),
-
-                      const SizedBox(height: 15),
-
-                      Row(
-                        children: [
-                          // APPROVE
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isPaid
-                                  ? Colors.grey
-                                  : Colors.green[300],
-                            ),
-                            onPressed: isPaid
-                                ? null
-                                : () => _confirmAction(
-                                      context,
-                                      "Approve Booking",
-                                      "Are you sure you want to approve this booking?",
-                                      () {
-                                        setState(() {
-                                          b["status"] = "Approved";
-                                        });
-                                      },
-                                    ),
-                            child: const Text(
-                              "Approve",
-                              style:
-                                  TextStyle(color: Colors.black),
-                            ),
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          // REJECT
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isPaid
-                                  ? Colors.grey
-                                  : Colors.red[300],
-                            ),
-                            onPressed: isPaid
-                                ? null
-                                : () => _confirmAction(
-                                      context,
-                                      "Reject Booking",
-                                      "Are you sure you want to reject this booking?",
-                                      () {
-                                        setState(() {
-                                          b["status"] = "Rejected";
-                                        });
-                                      },
-                                    ),
-                            child: const Text(
-                              "Reject",
-                              style:
-                                  TextStyle(color: Colors.white),
-                            ),
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          // DELETE
-                          IconButton(
-                            onPressed: isPaid
-                                ? null
-                                : () => _confirmAction(
-                                      context,
-                                      "Delete Booking",
-                                      "This action cannot be undone. Continue?",
-                                      () {
-                                        setState(() {
-                                          bookingsDB
-                                              .removeAt(index);
-                                        });
-                                      },
-                                    ),
-                            icon: Icon(
-                              Icons.delete,
-                              color: isPaid
-                                  ? Colors.grey
-                                  : Colors.black,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: bookings.length,
+            itemBuilder: (context, index) {
+              return _bookingCard(bookings[index]);
+            },
+          );
+        },
+      ),
     );
   }
 
-  // =====================
-  // STATUS BADGE
-  // =====================
+  Widget _bookingCard(Map<String, dynamic> b) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            b["hall"],
+            style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text("Date: ${b["date"]}"),
+          Text("Hours: ${b["hours"]}"),
+          Text("Add-ons: ${b["addOns"]}"),
+          Text(
+            "Total: RM ${b["total"]}",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 10),
+          _statusBadge(b["status"]),
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              _actionButton(
+                text: "Approve",
+                color: Colors.green,
+                onTap: () async {
+                  final ok = await _confirmDialog(
+                    "Approve Booking",
+                    "Approve this booking?",
+                  );
+                  if (ok) {
+                    await BookingService.updateStatus(
+                        b["id"], "Approved");
+                    setState(_loadBookings);
+                  }
+                },
+              ),
+              const SizedBox(width: 10),
+              _actionButton(
+                text: "Reject",
+                color: Colors.red,
+                onTap: () async {
+                  final ok = await _confirmDialog(
+                    "Reject Booking",
+                    "Reject this booking?",
+                  );
+                  if (ok) {
+                    await BookingService.updateStatus(
+                        b["id"], "Rejected");
+                    setState(_loadBookings);
+                  }
+                },
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  final ok = await _confirmDialog(
+                    "Delete Booking",
+                    "Delete this booking permanently?",
+                  );
+                  if (ok) {
+                    await BookingService.deleteBooking(b["id"]);
+                    setState(_loadBookings);
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white, // 🔥 FONT PUTIH
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 0,
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   Widget _statusBadge(String status) {
     Color color;
     switch (status) {
-      case "Pending":
-        color = Colors.orange;
-        break;
       case "Approved":
         color = Colors.green;
         break;
@@ -185,48 +201,22 @@ class _AdminManageBookingsPageState
         color = Colors.red;
         break;
       case "Paid":
-        color = Colors.blue;
+        color = Colors.black;
         break;
       default:
-        color = Colors.grey;
+        color = const Color(0xFFD4AF37);
     }
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(8)),
+        color: color,
+        borderRadius: BorderRadius.circular(30),
+      ),
       child: Text(
         status,
-        style: const TextStyle(color: Colors.white),
-      ),
-    );
-  }
-
-  // =====================
-  // CONFIRM DIALOG
-  // =====================
-  void _confirmAction(BuildContext context, String title,
-      String message, VoidCallback onConfirm) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            child: const Text("Confirm"),
-          ),
-        ],
+        style: const TextStyle(
+            color: Colors.white, fontWeight: FontWeight.bold),
       ),
     );
   }

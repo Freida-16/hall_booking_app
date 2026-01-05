@@ -1,13 +1,57 @@
 import 'package:flutter/material.dart';
 import 'hall_list_page.dart';
 import 'hall_details_page.dart';
+import 'my_bookings_page.dart';
+import 'category_halls_page.dart';
 
-class HomeGuestPage extends StatelessWidget {
-  const HomeGuestPage({super.key});
+class HomeGuestPage extends StatefulWidget {
+  final int startIndex;
+  const HomeGuestPage({super.key, this.startIndex = 0});
+
+  @override
+  State<HomeGuestPage> createState() => _HomeGuestPageState();
+}
+
+class _HomeGuestPageState extends State<HomeGuestPage> {
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.startIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final halls = [
+    final pages = [
+      _homeContent(context),
+      const MyBookingsPage(),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7EDE9),
+      appBar: AppBar(
+        title: const Text("Welcome"),
+        centerTitle: true,
+        backgroundColor: const Color(0xFFF7EDE9),
+        elevation: 0,
+      ),
+      body: pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        selectedItemColor: Colors.black,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.event), label: 'My Bookings'),
+        ],
+      ),
+    );
+  }
+
+  // ================= HOME CONTENT =================
+  Widget _homeContent(BuildContext context) {
+    final popularHalls = [
       {
         'name': 'Glasshouse at Seputeh',
         'image': 'assets/halls/glasshouse.jpg',
@@ -15,194 +59,183 @@ class HomeGuestPage extends StatelessWidget {
         'capacity': 400,
       },
       {
+        'name': 'Majestic Ballroom',
+        'image': 'assets/halls/majestic.jpg',
+        'price': 8000,
+        'capacity': 500,
+      },
+      {
         'name': 'Boathouse Kuala Lumpur',
         'image': 'assets/halls/boathouse.jpg',
         'price': 2000,
         'capacity': 150,
       },
-      {
-        'name': 'Plaza Sentral Convention Hall',
-        'image': 'assets/halls/plaza_sentral.jpg',
-        'price': 7000,
-        'capacity': 500,
-      },
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Welcome"),
-        centerTitle: true,
-      ),
+    final categories = ['Wedding', 'Corporate', 'Birthday', 'Engagement'];
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-            // 🔍 SEARCH (NO FRAME, CLEAN)
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Search halls...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+        // SEARCH
+        TextField(
+          decoration: InputDecoration(
+            hintText: "Search halls...",
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
             ),
+          ),
+        ),
 
-            const SizedBox(height: 24),
+        const SizedBox(height: 18),
 
-            // 📂 CATEGORIES
-            const Text(
-              "Categories",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _category(context, "Wedding"),
-                _category(context, "Corporate"),
-                _category(context, "Party"),
-                _category(context, "Others"),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // 🌟 FEATURED HALL
-            GestureDetector(
-              onTap: () {
-                final hall = halls[0];
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => HallDetailsPage(
-                      hallName: hall['name'] as String,
-                      price: hall['price'] as int,
-                      capacity: hall['capacity'] as int,
-                      imagePath: hall['image'] as String,
-                    ),
+        // CATEGORY BUTTONS (NAVIGATION ONLY)
+        SizedBox(
+          height: 42,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, i) {
+              return OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black,
+                  side: const BorderSide(color: Colors.black),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
                   ),
-                );
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  halls[0]['image'] as String,
-                  height: 220,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
                 ),
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // 🔥 POPULAR VENUES
-            const Text(
-              "Popular Venues",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 14),
-
-            SizedBox(
-              height: 190,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: halls.length,
-                itemBuilder: (context, index) {
-                  final hall = halls[index];
-
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => HallDetailsPage(
-                            hallName: hall['name'] as String,
-                            price: hall['price'] as int,
-                            capacity: hall['capacity'] as int,
-                            imagePath: hall['image'] as String,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: 170,
-                      margin: const EdgeInsets.only(right: 16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        image: DecorationImage(
-                          image: AssetImage(hall['image'] as String),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // 🔘 ACTION BUTTONS
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const HallListPage(),
+                      builder: (_) => CategoryHallsPage(category: categories[i]),
                     ),
                   );
                 },
-                child: const Text("Browse All Halls"),
+                child: Text(categories[i]),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // HERO IMAGE (STATIC – JANGAN USIK 😤)
+        GestureDetector(
+          onTap: () {
+            final hall = popularHalls.first;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => HallDetailsPage(
+                  hallName: hall['name'] as String,
+                  price: hall['price'] as int,
+                  capacity: hall['capacity'] as int,
+                  imagePath: hall['image'] as String,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              image: const DecorationImage(
+                image: AssetImage('assets/halls/glasshouse.jpg'),
+                fit: BoxFit.cover,
               ),
             ),
+            alignment: Alignment.bottomLeft,
+            padding: const EdgeInsets.all(16),
+            child: const Text(
+              "Glasshouse at Seputeh",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
 
-            const SizedBox(height: 14),
+        const SizedBox(height: 30),
 
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/myBookings');
+        // POPULAR VENUES (KEKAL BANYAK GAMBAR)
+        const Text(
+          "Popular Venues",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+
+        const SizedBox(height: 14),
+
+        SizedBox(
+          height: 190,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: popularHalls.length,
+            itemBuilder: (context, index) {
+              final hall = popularHalls[index];
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => HallDetailsPage(
+                        hallName: hall['name'] as String,
+                        price: hall['price'] as int,
+                        capacity: hall['capacity'] as int,
+                        imagePath: hall['image'] as String,
+                      ),
+                    ),
+                  );
                 },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: 170,
+                  margin: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    image: DecorationImage(
+                      image: AssetImage(hall['image'] as String),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-                child: const Text("My Bookings"),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 30),
+
+        // BROWSE ALL
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: const Color(0xFFD4AF37),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static Widget _category(BuildContext context, String category) {
-    return ActionChip(
-      label: Text(category),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HallListPage(category: category),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HallListPage()),
+              );
+            },
+            child: const Text("Browse All Halls",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
-        );
-      },
+        ),
+      ]),
     );
   }
 }
